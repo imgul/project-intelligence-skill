@@ -1,0 +1,9 @@
+{
+    "mcpServers": {
+      "project-intelligence": {
+        "command": "node",
+        "args": ["/absolute/path/to/project-intelligence-skill/dist/index.js"],
+        "description": "AI-powered project intelligence: next action suggestions and strategic questions"
+      }
+    }
+  }

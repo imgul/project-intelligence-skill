@@ -1,0 +1,15 @@
+# create a .gitignore file with the following contents:
+node_modules
+dist
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.development
+.env.test
+.env.production
+.env.local
+.env.development.local
+.env.test.local
+
