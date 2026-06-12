@@ -6,6 +6,7 @@ import { DependencyAnalyzer } from "../utils/dependency-analyzer.js";
 import {
   ProjectContext,
   FileInfo,
+  CommitInfo,
   ProjectType,
   Framework,
   Language,
