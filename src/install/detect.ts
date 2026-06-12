@@ -81,13 +81,8 @@ export function detectInstalledClients(clientIds: ClientId[]): ClientId[] {
 }
 
 export function resolveInstallScope(): "global" | "project" {
+  // npm sets npm_config_global during global installs (npm i -g)
   if (process.env.npm_config_global === "true") {
-    return "global";
-  }
-
-  const execPath = process.env.npm_execpath || "";
-  const prefix = process.env.npm_config_prefix || "";
-  if (prefix && execPath.includes(prefix.replace(/\\/g, "/"))) {
     return "global";
   }
 
