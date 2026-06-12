@@ -23,6 +23,9 @@ jobs:
           cache: npm
 
       - run: npm ci
+        env:
+          HUSKY: 0
+          PROJECT_INTELLIGENCE_SKIP_SETUP: 1
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run format:check

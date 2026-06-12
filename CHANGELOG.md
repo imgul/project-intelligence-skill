@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.0] - 2026-06-12
 
+### Added
+
+- GitHub Release workflow: npm publish runs only on published releases, not every push
+
 ### Changed
 
 - README overhaul: quick start, tool/prompt tables, privacy section, troubleshooting, and client compatibility matrix

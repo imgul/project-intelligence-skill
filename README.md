@@ -292,6 +292,14 @@ Contributions are welcome. Please:
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 
+### Releasing (maintainers)
+
+npm publishes **only** when a [GitHub Release](https://github.com/imgul/project-intelligence-skill/releases) is published — not on every push to `main`.
+
+1. Bump version in `package.json` and update `CHANGELOG.md`
+2. Push to `main` and create a release tag matching the version (e.g. `v1.2.0`)
+3. GitHub Actions runs tests and publishes to npm (requires `NPM_TOKEN` repository secret)
+
 ---
 
 ## License
