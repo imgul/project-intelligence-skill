@@ -69,10 +69,7 @@ export class DependencyAnalyzer {
 
   getPackageJson(projectPath: string): Record<string, unknown> | null {
     try {
-      const content = fs.readFileSync(
-        path.join(projectPath, "package.json"),
-        "utf-8"
-      );
+      const content = fs.readFileSync(path.join(projectPath, "package.json"), "utf-8");
       return JSON.parse(content);
     } catch {
       return null;

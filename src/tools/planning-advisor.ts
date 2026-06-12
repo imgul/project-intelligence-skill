@@ -17,9 +17,7 @@ export const planningAdvisorSchema = z.object({
 
 export type PlanningAdvisorInput = z.infer<typeof planningAdvisorSchema>;
 
-export async function generatePlan(
-  input: PlanningAdvisorInput
-): Promise<string> {
+export async function generatePlan(input: PlanningAdvisorInput): Promise<string> {
   const analyzer = new ProjectAnalyzer();
   const actionGenerator = new ActionGenerator();
   const questionGenerator = new QuestionGenerator();
@@ -90,9 +88,9 @@ export async function generatePlan(
 
 function generatePhases(
   goal: string,
-  timeframe: string,
-  context: any,
-  actions: any[]
+  _timeframe: string,
+  _context: any,
+  _actions: any[]
 ): Array<{ name: string; timeline: string; tasks: string[] }> {
   const goalLower = goal.toLowerCase();
 
@@ -121,12 +119,7 @@ function generatePhases(
       {
         name: "Security Hardening",
         timeline: "Day 5",
-        tasks: [
-          "Rate limiting",
-          "CSRF protection",
-          "Security headers",
-          "Auth tests",
-        ],
+        tasks: ["Rate limiting", "CSRF protection", "Security headers", "Auth tests"],
       },
     ];
   }
@@ -203,7 +196,7 @@ function generatePhases(
 
 function identifyRisks(
   context: any,
-  goal: string
+  _goal: string
 ): Array<{ risk: string; mitigation: string }> {
   const risks = [];
 

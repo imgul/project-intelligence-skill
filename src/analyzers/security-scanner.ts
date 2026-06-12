@@ -75,10 +75,10 @@ ${
   context.framework === "nextjs"
     ? "Add these to next.config.js headers configuration"
     : context.framework === "express"
-    ? "Use helmet.js middleware for Express"
-    : context.framework === "nestjs"
-    ? "Use @nestjs/helmet package"
-    : "Show me the appropriate implementation for my stack"
+      ? "Use helmet.js middleware for Express"
+      : context.framework === "nestjs"
+        ? "Use @nestjs/helmet package"
+        : "Show me the appropriate implementation for my stack"
 }
 
 Also provide a checklist for testing the headers using tools like securityheaders.com`,
@@ -129,7 +129,8 @@ Please analyze my current auth code and provide specific improvements.`,
         category: "security",
         priority: "high",
         title: "✅ Implement Comprehensive Input Validation",
-        description: "Add robust input validation and sanitization to all API endpoints",
+        description:
+          "Add robust input validation and sanitization to all API endpoints",
         prompt: `Help me implement comprehensive input validation and sanitization for my ${context.framework} ${context.apiType || "REST"} API:
 
 1. **Schema Validation**: 
@@ -137,8 +138,8 @@ Please analyze my current auth code and provide specific improvements.`,
      context.framework === "nestjs"
        ? "Use class-validator and class-transformer with DTOs"
        : context.language.includes("typescript")
-       ? "Implement Zod schemas for all request bodies, params, and query strings"
-       : "Implement proper validation middleware"
+         ? "Implement Zod schemas for all request bodies, params, and query strings"
+         : "Implement proper validation middleware"
    }
 
 2. **SQL Injection Prevention**: 

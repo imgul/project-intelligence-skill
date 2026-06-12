@@ -1,4 +1,8 @@
-import { ProjectContext, NextAction, ActionCategory } from "../context/project-context.js";
+import {
+  ProjectContext,
+  NextAction,
+  ActionCategory,
+} from "../context/project-context.js";
 import { SecurityScanner } from "../analyzers/security-scanner.js";
 import { UIAnalyzer } from "../analyzers/ui-analyzer.js";
 
@@ -43,7 +47,7 @@ export class ActionGenerator {
       "feature-development": ["feature", "testing", "api"],
       "bug-fixing": ["testing", "error-handling", "monitoring"],
       "deployment-prep": ["deployment", "security", "performance", "monitoring"],
-      "maintenance": ["refactoring", "documentation", "performance"],
+      maintenance: ["refactoring", "documentation", "performance"],
     };
 
     return actions
@@ -52,9 +56,7 @@ export class ActionGenerator {
         score:
           priorityScore[action.priority] +
           impactScore[action.estimatedImpact] +
-          (phaseBonus[context.currentWorkContext.phase]?.includes(
-            action.category
-          )
+          (phaseBonus[context.currentWorkContext.phase]?.includes(action.category)
             ? 20
             : 0),
       }))
@@ -105,8 +107,8 @@ export class ActionGenerator {
      context.language.includes("typescript") || context.language.includes("javascript")
        ? "- Set up Vitest (preferred) or Jest with proper configuration\n   - Configure TypeScript support and path aliases\n   - Add coverage reporting with v8"
        : context.language.includes("python")
-       ? "- Set up pytest with pytest-cov for coverage\n   - Configure conftest.py and fixtures"
-       : "- Set up appropriate testing framework for the language"
+         ? "- Set up pytest with pytest-cov for coverage\n   - Configure conftest.py and fixtures"
+         : "- Set up appropriate testing framework for the language"
    }
 
 2. **Component Testing** (if applicable):
@@ -214,8 +216,8 @@ Please analyze my application and create E2E tests for the 5 most critical user 
      context.framework === "nextjs"
        ? "- Recommend: Vercel (optimal for Next.js)\n   - Alternative: AWS with CloudFront + Lambda\n   - Self-hosted: Docker + nginx"
        : context.projectType === "api"
-       ? "- Recommend: Railway, Render, or Fly.io for APIs\n   - Alternative: AWS ECS with Fargate\n   - Self-hosted: Docker + VPS"
-       : "- Show deployment options for my specific stack"
+         ? "- Recommend: Railway, Render, or Fly.io for APIs\n   - Alternative: AWS ECS with Fargate\n   - Self-hosted: Docker + VPS"
+         : "- Show deployment options for my specific stack"
    }
 
 3. **Environment Management**:
@@ -393,9 +395,7 @@ Please review my database schema and queries, then provide specific optimization
     return actions;
   }
 
-  private generateDeveloperExperienceActions(
-    context: ProjectContext
-  ): NextAction[] {
+  private generateDeveloperExperienceActions(context: ProjectContext): NextAction[] {
     const actions: NextAction[] = [];
 
     if (!context.hasLinting || !context.hasFormatting) {
@@ -450,7 +450,11 @@ Please implement all of these and fix any existing linting errors.`,
   private generateFeatureActions(context: ProjectContext): NextAction[] {
     const actions: NextAction[] = [];
 
-    if (!context.hasAuthentication && context.projectType !== "library") {
+    if (
+      !context.hasAuthentication &&
+      !["library", "cli"].includes(context.projectType) &&
+      (context.hasAPI || context.hasFrontend)
+    ) {
       actions.push({
         id: "feature-authentication",
         category: "authentication",
@@ -464,8 +468,8 @@ Please implement all of these and fix any existing linting errors.`,
      context.framework === "nextjs"
        ? "Recommend: Auth.js (NextAuth v5) with:\n   - Credentials provider (email/password)\n   - OAuth providers (Google, GitHub)\n   - Magic link email auth"
        : context.framework === "nestjs"
-       ? "Recommend: Passport.js with JWT strategy"
-       : "Show me the best auth approach for my stack"
+         ? "Recommend: Passport.js with JWT strategy"
+         : "Show me the best auth approach for my stack"
    }
 
 2. **User Management**:
@@ -552,9 +556,7 @@ Please implement real-time features appropriate for my application.`,
     const actions: NextAction[] = [];
 
     const hasMonitoring = context.dependencies.some((d) =>
-      ["@sentry/node", "@sentry/nextjs", "datadog", "newrelic", "pino"].includes(
-        d.name
-      )
+      ["@sentry/node", "@sentry/nextjs", "datadog", "newrelic", "pino"].includes(d.name)
     );
 
     if (!hasMonitoring) {
@@ -604,7 +606,8 @@ Please implement real-time features appropriate for my application.`,
    - Conversion funnels
 
 Please implement a complete observability stack for my application.`,
-        rationale: "You can't fix what you can't see — monitoring is critical for production",
+        rationale:
+          "You can't fix what you can't see — monitoring is critical for production",
         estimatedImpact: "high",
         tags: ["monitoring", "logging", "sentry", "observability"],
       });

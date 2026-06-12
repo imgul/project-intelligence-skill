@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as path from "path";
 import { FileScanner } from "../utils/file-scanner.js";
 import { GitAnalyzer } from "../utils/git-analyzer.js";
@@ -32,8 +31,7 @@ export class ProjectAnalyzer {
     const directories = this.fileScanner.getDirectories(absolutePath);
 
     // Analyze dependencies
-    const dependencies =
-      this.dependencyAnalyzer.analyzePnpmJson(absolutePath);
+    const dependencies = this.dependencyAnalyzer.analyzePnpmJson(absolutePath);
 
     // Git analysis
     const gitAnalyzer = new GitAnalyzer(absolutePath);
@@ -46,7 +44,13 @@ export class ProjectAnalyzer {
     // Detect project characteristics
     const framework = this.detectFramework(files, dependencies);
     const language = this.detectLanguages(files);
-    const projectType = this.detectProjectType(files, framework, dependencies);
+    const isMcpServer = this.detectMcpServer(files, dependencies);
+    const projectType = this.detectProjectType(
+      files,
+      framework,
+      dependencies,
+      isMcpServer
+    );
 
     // Feature detection
     const hasTests = this.detectTests(files);
@@ -55,13 +59,11 @@ export class ProjectAnalyzer {
     const hasKubernetes = this.detectKubernetes(files);
     const hasDatabase = this.detectDatabase(files, dependencies);
     const hasAuthentication = this.detectAuthentication(files, dependencies);
-    const hasAPI = this.detectAPI(files, framework);
+    const hasAPI = isMcpServer ? false : this.detectAPI(files, framework);
     const hasFrontend = this.detectFrontend(framework, files);
 
     // Security checks
-    const hasEnvFile = this.fileScanner.fileExists(
-      path.join(absolutePath, ".env")
-    );
+    const hasEnvFile = this.fileScanner.fileExists(path.join(absolutePath, ".env"));
     const hasEnvExample =
       this.fileScanner.fileExists(path.join(absolutePath, ".env.example")) ||
       this.fileScanner.fileExists(path.join(absolutePath, ".env.sample"));
@@ -78,12 +80,8 @@ export class ProjectAnalyzer {
       path.join(absolutePath, "Procfile")
     );
     const hasAwsConfig =
-      this.fileScanner.fileExists(
-        path.join(absolutePath, "serverless.yml")
-      ) ||
-      this.fileScanner.fileExists(
-        path.join(absolutePath, "template.yaml")
-      ) ||
+      this.fileScanner.fileExists(path.join(absolutePath, "serverless.yml")) ||
+      this.fileScanner.fileExists(path.join(absolutePath, "template.yaml")) ||
       this.fileScanner.fileExists(path.join(absolutePath, ".aws"));
     const hasNginxConfig = files.some(
       (f) => f.path.includes("nginx") && f.extension === ".conf"
@@ -108,19 +106,11 @@ export class ProjectAnalyzer {
       this.fileScanner.fileExists(path.join(absolutePath, ".eslintrc")) ||
       this.fileScanner.fileExists(path.join(absolutePath, ".eslintrc.js")) ||
       this.fileScanner.fileExists(path.join(absolutePath, ".eslintrc.json")) ||
-      this.fileScanner.fileExists(
-        path.join(absolutePath, ".eslintrc.yaml")
-      ) ||
-      this.fileScanner.fileExists(
-        path.join(absolutePath, "eslint.config.js")
-      );
+      this.fileScanner.fileExists(path.join(absolutePath, ".eslintrc.yaml")) ||
+      this.fileScanner.fileExists(path.join(absolutePath, "eslint.config.js"));
     const hasFormatting =
-      this.fileScanner.fileExists(
-        path.join(absolutePath, ".prettierrc")
-      ) ||
-      this.fileScanner.fileExists(
-        path.join(absolutePath, ".prettierrc.json")
-      ) ||
+      this.fileScanner.fileExists(path.join(absolutePath, ".prettierrc")) ||
+      this.fileScanner.fileExists(path.join(absolutePath, ".prettierrc.json")) ||
       this.fileScanner.fileExists(path.join(absolutePath, "prettier.config.js"));
     const hasTypeChecking =
       this.fileScanner.fileExists(path.join(absolutePath, "tsconfig.json")) ||
@@ -146,7 +136,9 @@ export class ProjectAnalyzer {
 
     // Detect state management
     const stateManagementLib = this.detectStateManagement(dependencies);
-    const apiType = this.detectAPIType(files, dependencies);
+    const apiType = isMcpServer
+      ? undefined
+      : this.detectAPIType(files, dependencies, framework);
     const databaseType = this.detectDatabaseType(files, dependencies);
     const frontendFramework = this.detectFrontendFramework(framework);
 
@@ -167,9 +159,7 @@ export class ProjectAnalyzer {
       hasRequirementsTxt: this.fileScanner.fileExists(
         path.join(absolutePath, "requirements.txt")
       ),
-      hasPomXml: this.fileScanner.fileExists(
-        path.join(absolutePath, "pom.xml")
-      ),
+      hasPomXml: this.fileScanner.fileExists(path.join(absolutePath, "pom.xml")),
       hasTests,
       hasCI,
       hasDocker,
@@ -207,12 +197,26 @@ export class ProjectAnalyzer {
     };
   }
 
+  private getAnalysisFiles(files: FileInfo[]): FileInfo[] {
+    return files.filter(
+      (f) =>
+        !f.path.includes("generators/") &&
+        !f.path.includes("fixtures/") &&
+        !f.path.includes("dist/")
+    );
+  }
+
   private detectFramework(
     files: FileInfo[],
     dependencies: { name: string }[]
   ): Framework {
     const depNames = dependencies.map((d) => d.name);
-    const fileContents = files.map((f) => f.path).join(" ");
+    const analysisFiles = this.getAnalysisFiles(files);
+    const fileContents = analysisFiles.map((f) => f.path).join(" ");
+
+    if (depNames.includes("@modelcontextprotocol/sdk")) {
+      return "unknown";
+    }
 
     if (depNames.includes("next") || fileContents.includes("next.config")) {
       return "nextjs";
@@ -234,30 +238,26 @@ export class ProjectAnalyzer {
       return "svelte";
     }
 
-    // Python frameworks
+    // Python frameworks (implementation files only)
     if (
-      files.some(
+      analysisFiles.some(
         (f) =>
-          f.content?.includes("from django") ||
-          f.content?.includes("import django")
+          f.content?.includes("from django") || f.content?.includes("import django")
       )
     ) {
       return "django";
     }
     if (
-      files.some(
+      analysisFiles.some(
         (f) =>
-          f.content?.includes("from fastapi") ||
-          f.content?.includes("import fastapi")
+          f.content?.includes("from fastapi") || f.content?.includes("import fastapi")
       )
     ) {
       return "fastapi";
     }
     if (
-      files.some(
-        (f) =>
-          f.content?.includes("from flask") ||
-          f.content?.includes("import flask")
+      analysisFiles.some(
+        (f) => f.content?.includes("from flask") || f.content?.includes("import flask")
       )
     ) {
       return "flask";
@@ -292,18 +292,33 @@ export class ProjectAnalyzer {
     return Array.from(languages);
   }
 
+  private detectMcpServer(
+    files: FileInfo[],
+    dependencies: { name: string }[]
+  ): boolean {
+    if (dependencies.some((d) => d.name === "@modelcontextprotocol/sdk")) {
+      return true;
+    }
+    return files.some(
+      (f) =>
+        f.content?.includes("StdioServerTransport") ||
+        f.content?.includes("@modelcontextprotocol/sdk")
+    );
+  }
+
   private detectProjectType(
     files: FileInfo[],
     framework: Framework,
-    dependencies: { name: string }[]
+    dependencies: { name: string }[],
+    isMcpServer: boolean
   ): ProjectType {
     const depNames = dependencies.map((d) => d.name);
 
-    if (
-      files.some(
-        (f) => f.path.includes("packages/") || f.path.includes("apps/")
-      )
-    ) {
+    if (isMcpServer) {
+      return "cli";
+    }
+
+    if (files.some((f) => f.path.includes("packages/") || f.path.includes("apps/"))) {
       return "monorepo";
     }
     if (
@@ -341,22 +356,27 @@ export class ProjectAnalyzer {
     );
   }
 
+  private normalizePath(filePath: string): string {
+    return filePath.replace(/\\/g, "/");
+  }
+
   private detectCI(files: FileInfo[]): boolean {
-    return files.some(
-      (f) =>
-        f.path.includes(".github/workflows") ||
-        f.path.includes(".gitlab-ci") ||
-        f.path.includes("Jenkinsfile") ||
-        f.path.includes(".circleci") ||
-        f.path.includes(".travis.yml")
-    );
+    return files.some((f) => {
+      const p = this.normalizePath(f.path);
+      return (
+        p.includes(".github/workflows") ||
+        p.includes(".gitlab-ci") ||
+        p.includes("Jenkinsfile") ||
+        p.includes(".circleci") ||
+        p.includes(".travis.yml")
+      );
+    });
   }
 
   private detectDocker(files: FileInfo[]): boolean {
     return files.some(
       (f) =>
-        f.path.toLowerCase().includes("dockerfile") ||
-        f.path.includes("docker-compose")
+        f.path.toLowerCase().includes("dockerfile") || f.path.includes("docker-compose")
     );
   }
 
@@ -372,10 +392,7 @@ export class ProjectAnalyzer {
     );
   }
 
-  private detectDatabase(
-    files: FileInfo[],
-    dependencies: { name: string }[]
-  ): boolean {
+  private detectDatabase(files: FileInfo[], dependencies: { name: string }[]): boolean {
     const dbDeps = [
       "prisma",
       "mongoose",
@@ -411,11 +428,11 @@ export class ProjectAnalyzer {
       files.some((f) => f.path.endsWith(".prisma"))
     ) {
       const prismaSchema = files.find((f) => f.path.endsWith(".prisma"));
-      if (prismaSchema?.content?.includes("provider = \"postgresql\""))
+      if (prismaSchema?.content?.includes('provider = "postgresql"'))
         return "PostgreSQL (Prisma)";
-      if (prismaSchema?.content?.includes("provider = \"mysql\""))
+      if (prismaSchema?.content?.includes('provider = "mysql"'))
         return "MySQL (Prisma)";
-      if (prismaSchema?.content?.includes("provider = \"sqlite\""))
+      if (prismaSchema?.content?.includes('provider = "sqlite"'))
         return "SQLite (Prisma)";
       return "Prisma ORM";
     }
@@ -447,15 +464,29 @@ export class ProjectAnalyzer {
       "@clerk/nextjs",
       "lucia",
     ];
-    return (
-      dependencies.some((d) => authDeps.includes(d.name)) ||
-      files.some(
-        (f) =>
-          f.path.includes("auth") ||
-          f.content?.includes("JWT") ||
-          f.content?.includes("jsonwebtoken") ||
-          f.content?.includes("session")
-      )
+    if (dependencies.some((d) => authDeps.includes(d.name))) {
+      return true;
+    }
+
+    const implFiles = files.filter(
+      (f) =>
+        !f.path.includes("generators/") &&
+        !f.path.includes("fixtures/") &&
+        !f.path.endsWith(".md") &&
+        (f.extension === ".ts" || f.extension === ".js")
+    );
+
+    return implFiles.some(
+      (f) =>
+        (f.path.includes("/auth/") ||
+          f.path.includes("/authentication/") ||
+          /[/\\]auth\.(ts|js)$/.test(f.path)) &&
+        f.content !== undefined &&
+        (f.content.includes("passport") ||
+          f.content.includes("jsonwebtoken") ||
+          f.content.includes("bcrypt") ||
+          f.content.includes("next-auth") ||
+          f.content.includes("@auth/core"))
     );
   }
 
@@ -475,7 +506,8 @@ export class ProjectAnalyzer {
 
   private detectAPIType(
     files: FileInfo[],
-    dependencies: { name: string }[]
+    dependencies: { name: string }[],
+    framework: Framework
   ): "REST" | "GraphQL" | "gRPC" | "tRPC" | undefined {
     const depNames = dependencies.map((d) => d.name);
 
@@ -487,33 +519,32 @@ export class ProjectAnalyzer {
       depNames.includes("apollo-server")
     )
       return "GraphQL";
-    if (depNames.includes("@grpc/grpc-js") || depNames.includes("grpc"))
-      return "gRPC";
+    if (depNames.includes("@grpc/grpc-js") || depNames.includes("grpc")) return "gRPC";
     if (
-      files.some(
-        (f) =>
-          f.path.includes("/api/") ||
-          f.path.includes("routes/") ||
-          f.path.includes("controllers/")
-      )
-    )
+      files.some((f) => {
+        const p = this.normalizePath(f.path);
+        return (
+          p.includes("/api/") || p.includes("routes/") || p.includes("controllers/")
+        );
+      })
+    ) {
       return "REST";
+    }
+    if (
+      ["express", "fastify", "nestjs", "django", "fastapi", "flask"].includes(framework)
+    ) {
+      return "REST";
+    }
 
     return undefined;
   }
 
   private detectFrontend(framework: Framework, files: FileInfo[]): boolean {
     return (
-      [
-        "react",
-        "vue",
-        "angular",
-        "svelte",
-        "nextjs",
-        "nuxt",
-      ].includes(framework) ||
+      ["react", "vue", "angular", "svelte", "nextjs", "nuxt"].includes(framework) ||
       files.some(
-        (f) => f.extension === ".tsx" || f.extension === ".jsx" || f.extension === ".vue"
+        (f) =>
+          f.extension === ".tsx" || f.extension === ".jsx" || f.extension === ".vue"
       )
     );
   }
@@ -530,9 +561,7 @@ export class ProjectAnalyzer {
     return frontendMap[framework];
   }
 
-  private detectStateManagement(
-    dependencies: { name: string }[]
-  ): string | undefined {
+  private detectStateManagement(dependencies: { name: string }[]): string | undefined {
     const depNames = dependencies.map((d) => d.name);
 
     if (depNames.includes("zustand")) return "Zustand";
@@ -574,7 +603,9 @@ export class ProjectAnalyzer {
         secretPatterns.forEach((pattern) => {
           const matches = file.content!.match(pattern);
           if (matches) {
-            secrets.push(`Potential secret in ${file.path}: ${matches[0].substring(0, 30)}...`);
+            secrets.push(
+              `Potential secret in ${file.path}: ${matches[0].substring(0, 30)}...`
+            );
           }
         });
       }
@@ -590,7 +621,10 @@ export class ProjectAnalyzer {
     if (!allContent.includes("Content-Security-Policy")) {
       missing.push("Content-Security-Policy");
     }
-    if (!allContent.includes("X-Frame-Options") && !allContent.includes("frame-ancestors")) {
+    if (
+      !allContent.includes("X-Frame-Options") &&
+      !allContent.includes("frame-ancestors")
+    ) {
       missing.push("X-Frame-Options");
     }
     if (!allContent.includes("X-Content-Type-Options")) {
@@ -618,7 +652,7 @@ export class ProjectAnalyzer {
   private determineWorkContext(
     files: FileInfo[],
     gitInfo: any,
-    recentlyModifiedFiles: string[]
+    _recentlyModifiedFiles: string[]
   ): WorkContext {
     let phase: WorkPhase = "unknown";
     const recentChanges: string[] = [];
@@ -629,38 +663,45 @@ export class ProjectAnalyzer {
         .slice(0, 5)
         .map((c: CommitInfo) => c.message.toLowerCase());
 
-      recentChanges.push(...gitInfo.recentCommits.slice(0, 3).map((c: CommitInfo) => c.message));
+      recentChanges.push(
+        ...gitInfo.recentCommits.slice(0, 3).map((c: CommitInfo) => c.message)
+      );
 
       if (recentMessages.some((m: string) => m.includes("fix") || m.includes("bug"))) {
         phase = "bug-fixing";
       } else if (
         recentMessages.some(
-          (m: string) => m.includes("feat") || m.includes("add") || m.includes("implement")
+          (m: string) =>
+            m.includes("feat") || m.includes("add") || m.includes("implement")
         )
       ) {
         phase = "feature-development";
       } else if (
         recentMessages.some(
-          (m: string) => m.includes("refactor") || m.includes("clean") || m.includes("improve")
+          (m: string) =>
+            m.includes("refactor") || m.includes("clean") || m.includes("improve")
         )
       ) {
         phase = "refactoring";
       } else if (
-        recentMessages.some(
-          (m: string) => m.includes("test") || m.includes("spec")
-        )
+        recentMessages.some((m: string) => m.includes("test") || m.includes("spec"))
       ) {
         phase = "testing";
       } else if (
         recentMessages.some(
-          (m: string) => m.includes("deploy") || m.includes("release") || m.includes("ci")
+          (m: string) =>
+            m.includes("deploy") || m.includes("release") || m.includes("ci")
         )
       ) {
         phase = "deployment-prep";
       }
 
       // Try to extract current feature from branch name
-      if (gitInfo.currentBranch && gitInfo.currentBranch !== "main" && gitInfo.currentBranch !== "master") {
+      if (
+        gitInfo.currentBranch &&
+        gitInfo.currentBranch !== "main" &&
+        gitInfo.currentBranch !== "master"
+      ) {
         currentFeature = gitInfo.currentBranch
           .replace(/^(feature|feat|fix|bugfix|hotfix)\//, "")
           .replace(/-/g, " ");

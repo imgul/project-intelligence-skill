@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -13,10 +14,7 @@ import {
   generateStrategicQuestions,
   strategicQuestionsSchema,
 } from "./tools/strategic-questions.js";
-import {
-  generatePlan,
-  planningAdvisorSchema,
-} from "./tools/planning-advisor.js";
+import { generatePlan, planningAdvisorSchema } from "./tools/planning-advisor.js";
 
 const tools: Tool[] = [
   {
@@ -144,13 +142,7 @@ Provides:
         },
         timeframe: {
           type: "string",
-          enum: [
-            "today",
-            "this-week",
-            "this-sprint",
-            "this-month",
-            "this-quarter",
-          ],
+          enum: ["today", "this-week", "this-sprint", "this-month", "this-quarter"],
           default: "this-sprint",
         },
         constraints: {

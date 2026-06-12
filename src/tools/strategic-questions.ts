@@ -11,16 +11,8 @@ export const strategicQuestionsSchema = z.object({
     .describe(
       "Mode: planning (strategic), agent (implementation), asking (requirements clarification)"
     ),
-  count: z
-    .number()
-    .min(1)
-    .max(10)
-    .default(5)
-    .describe("Number of questions to ask"),
-  topic: z
-    .string()
-    .optional()
-    .describe("Specific topic to focus questions on"),
+  count: z.number().min(1).max(10).default(5).describe("Number of questions to ask"),
+  topic: z.string().optional().describe("Specific topic to focus questions on"),
   userInput: z
     .string()
     .optional()

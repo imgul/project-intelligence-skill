@@ -23,10 +23,7 @@ export const suggestNextActionsSchema = z.object({
     ])
     .default("all")
     .describe("Focus area for suggestions"),
-  currentTask: z
-    .string()
-    .optional()
-    .describe("What you are currently working on"),
+  currentTask: z.string().optional().describe("What you are currently working on"),
 });
 
 export type SuggestNextActionsInput = z.infer<typeof suggestNextActionsSchema>;
@@ -51,9 +48,7 @@ export async function suggestNextActions(
       feature: ["feature", "api", "authentication"],
     };
     const targetCategories = categoryMap[input.focusArea] || [];
-    const filtered = actions.filter((a) =>
-      targetCategories.includes(a.category)
-    );
+    const filtered = actions.filter((a) => targetCategories.includes(a.category));
     if (filtered.length > 0) actions = filtered;
   }
 

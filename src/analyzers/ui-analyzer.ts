@@ -32,8 +32,8 @@ export class UIAnalyzer {
      context.framework === "nextjs"
        ? "- Use Next.js loading.tsx files for route-level loading\n   - Implement React Suspense boundaries\n   - Use the new streaming SSR features"
        : context.framework === "react"
-       ? "- Use React Suspense + lazy loading\n   - Implement React Query/SWR loading states"
-       : "- Show framework-appropriate loading patterns"
+         ? "- Use React Suspense + lazy loading\n   - Implement React Query/SWR loading states"
+         : "- Show framework-appropriate loading patterns"
    }
 
 4. **Error States**:
@@ -54,8 +54,7 @@ Please analyze my current components and identify where loading states are missi
       category: "accessibility",
       priority: "high",
       title: "♿ Implement WCAG 2.1 AA Accessibility Standards",
-      description:
-        "Audit and fix accessibility issues to meet WCAG 2.1 AA compliance",
+      description: "Audit and fix accessibility issues to meet WCAG 2.1 AA compliance",
       prompt: `Help me implement comprehensive accessibility (a11y) improvements in my ${context.frontendFramework || context.framework} application to meet WCAG 2.1 AA standards:
 
 1. **Semantic HTML**:
@@ -144,8 +143,7 @@ Please audit my components and provide specific fixes.`,
    - Verify contrast ratios in dark mode
 
 Please implement this systematically across all my existing components.`,
-        rationale:
-          "Dark mode is expected by modern users and reduces eye strain",
+        rationale: "Dark mode is expected by modern users and reduces eye strain",
         estimatedImpact: "medium",
         tags: ["ui", "dark-mode", "theme", "user-preference"],
       });
@@ -157,8 +155,7 @@ Please implement this systematically across all my existing components.`,
       category: "ui-ux",
       priority: "high",
       title: "📱 Audit & Improve Responsive Design",
-      description:
-        "Ensure the application works flawlessly across all device sizes",
+      description: "Ensure the application works flawlessly across all device sizes",
       prompt: `Help me audit and improve the responsive design of my ${context.frontendFramework || context.framework} application:
 
 1. **Mobile-First Audit**:
@@ -193,8 +190,7 @@ Please implement this systematically across all my existing components.`,
    - Test with actual touch events
 
 Please analyze my current layout and provide specific improvements.`,
-      rationale:
-        "Mobile users account for 60%+ of web traffic",
+      rationale: "Mobile users account for 60%+ of web traffic",
       estimatedImpact: "high",
       tags: ["ui", "responsive", "mobile", "ux"],
     });
@@ -244,8 +240,7 @@ Please analyze my current layout and provide specific improvements.`,
    - Queue actions for when connection returns
 
 Please implement this across my application systematically.`,
-      rationale:
-        "Good error handling dramatically improves user trust and retention",
+      rationale: "Good error handling dramatically improves user trust and retention",
       estimatedImpact: "high",
       tags: ["ui", "error-handling", "ux", "notifications"],
     });

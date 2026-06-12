@@ -9,6 +9,7 @@ export class FileScanner {
     ".git/**",
     "dist/**",
     "build/**",
+    "tests/fixtures/**",
     ".next/**",
     "__pycache__/**",
     "*.pyc",
@@ -28,6 +29,7 @@ export class FileScanner {
         ignore: this.ignoredPatterns,
         nodir: true,
         absolute: false,
+        dot: true,
       });
 
       for (const filePath of filePaths.slice(0, 500)) {

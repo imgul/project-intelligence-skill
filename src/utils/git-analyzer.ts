@@ -41,9 +41,7 @@ export class GitAnalyzer {
             commit.hash,
             "--name-only",
           ]);
-          commit.filesChanged = diff
-            .split("\n")
-            .filter((f) => f.trim().length > 0);
+          commit.filesChanged = diff.split("\n").filter((f) => f.trim().length > 0);
         } catch {
           // Some commits might not have parents
         }
@@ -65,7 +63,7 @@ export class GitAnalyzer {
           status.staged.length > 0,
         remoteUrl,
       };
-    } catch (error) {
+    } catch {
       return null;
     }
   }
