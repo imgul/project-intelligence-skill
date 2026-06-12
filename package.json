@@ -1,13 +1,15 @@
 {
   "name": "project-intelligence-skill",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "MCP server for intelligent next-action suggestions, strategic questioning, and planning",
   "main": "dist/index.js",
   "bin": {
-    "project-intelligence": "dist/index.js"
+    "project-intelligence": "dist/index.js",
+    "project-intelligence-setup": "dist/install/setup.js"
   },
   "files": [
     "dist",
+    "scripts/postinstall.js",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"
@@ -25,7 +27,9 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "postinstall": "node scripts/postinstall.js",
+    "setup": "node dist/install/setup.js"
   },
   "keywords": [
     "mcp",
@@ -37,7 +41,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/imgul/project-intelligence-skill.git"
+    "url": "git+https://github.com/imgul/project-intelligence-skill.git"
   },
   "engines": {
     "node": ">=18"

@@ -1,9 +1,9 @@
 {
-    "servers": {
-      "project-intelligence": {
-        "type": "stdio",
-        "command": "node",
-        "args": ["${workspaceFolder}/dist/index.js"]
-      }
+  "servers": {
+    "project-intelligence": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "project-intelligence-skill@1.2.0"]
     }
   }
+}

@@ -31,7 +31,17 @@ export class ProjectAnalyzer {
     const directories = this.fileScanner.getDirectories(absolutePath);
 
     // Analyze dependencies
-    const dependencies = this.dependencyAnalyzer.analyzePnpmJson(absolutePath);
+    const npmDependencies = this.dependencyAnalyzer.analyzePnpmJson(absolutePath);
+    const pythonDependencies =
+      this.dependencyAnalyzer.analyzePythonRequirements(absolutePath);
+    const dependencies = [...npmDependencies, ...pythonDependencies];
+    const vulnerableDependencies =
+      this.dependencyAnalyzer.detectSecurityIssues(dependencies);
+    dependencies.forEach((dep) => {
+      if (vulnerableDependencies.some((v) => v.startsWith(`${dep.name}@`))) {
+        dep.hasVulnerability = true;
+      }
+    });
 
     // Git analysis
     const gitAnalyzer = new GitAnalyzer(absolutePath);
@@ -156,9 +166,9 @@ export class ProjectAnalyzer {
       hasPackageJson: this.fileScanner.fileExists(
         path.join(absolutePath, "package.json")
       ),
-      hasRequirementsTxt: this.fileScanner.fileExists(
-        path.join(absolutePath, "requirements.txt")
-      ),
+      hasRequirementsTxt:
+        this.fileScanner.fileExists(path.join(absolutePath, "requirements.txt")) ||
+        this.fileScanner.fileExists(path.join(absolutePath, "pyproject.toml")),
       hasPomXml: this.fileScanner.fileExists(path.join(absolutePath, "pom.xml")),
       hasTests,
       hasCI,
@@ -181,6 +191,8 @@ export class ProjectAnalyzer {
       hasEnvExample,
       exposedSecrets,
       missingSecurityHeaders: this.detectMissingSecurityHeaders(files),
+      vulnerableDependencies:
+        vulnerableDependencies.length > 0 ? vulnerableDependencies : undefined,
       gitInfo: gitInfo || undefined,
       isGitRepo,
       recentlyModifiedFiles,

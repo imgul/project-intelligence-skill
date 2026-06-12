@@ -78,6 +78,7 @@ export interface ProjectContext {
   hasEnvExample: boolean;
   exposedSecrets: string[];
   missingSecurityHeaders: string[];
+  vulnerableDependencies?: string[];
 
   // Git
   gitInfo?: GitInfo;

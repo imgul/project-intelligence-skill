@@ -50,16 +50,29 @@ export class ActionGenerator {
       maintenance: ["refactoring", "documentation", "performance"],
     };
 
+    const currentFeature =
+      context.currentWorkContext.currentFeature?.toLowerCase() || "";
+
     return actions
-      .map((action) => ({
-        action,
-        score:
+      .map((action) => {
+        let score =
           priorityScore[action.priority] +
           impactScore[action.estimatedImpact] +
           (phaseBonus[context.currentWorkContext.phase]?.includes(action.category)
             ? 20
-            : 0),
-      }))
+            : 0);
+
+        if (currentFeature) {
+          const actionText =
+            `${action.title} ${action.description} ${action.tags.join(" ")}`.toLowerCase();
+          const featureWords = currentFeature.split(/\s+/).filter((w) => w.length > 3);
+          for (const word of featureWords) {
+            if (actionText.includes(word)) score += 15;
+          }
+        }
+
+        return { action, score };
+      })
       .sort((a, b) => b.score - a.score)
       .map((item) => item.action);
   }

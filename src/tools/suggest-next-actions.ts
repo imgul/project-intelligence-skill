@@ -35,9 +35,13 @@ export async function suggestNextActions(
   const generator = new ActionGenerator();
 
   const context = await analyzer.analyze(input.projectPath);
+
+  if (input.currentTask) {
+    context.currentWorkContext.currentFeature = input.currentTask;
+  }
+
   let actions = generator.generateActions(context, input.count);
 
-  // Filter by focus area if specified
   if (input.focusArea !== "all") {
     const categoryMap: Record<string, string[]> = {
       security: ["security", "authentication"],
@@ -49,12 +53,11 @@ export async function suggestNextActions(
     };
     const targetCategories = categoryMap[input.focusArea] || [];
     const filtered = actions.filter((a) => targetCategories.includes(a.category));
-    if (filtered.length > 0) actions = filtered;
-  }
-
-  // Add current task context
-  if (input.currentTask) {
-    context.currentWorkContext.currentFeature = input.currentTask;
+    if (filtered.length > 0) {
+      const filteredIds = new Set(filtered.map((a) => a.id));
+      const backfill = actions.filter((a) => !filteredIds.has(a.id));
+      actions = [...filtered, ...backfill].slice(0, input.count);
+    }
   }
 
   return formatActionsOutput(actions, context);
@@ -105,9 +108,8 @@ function formatActionsOutput(actions: NextAction[], context: any): string {
     output += `${prioEmoji} **Priority**: ${action.priority.toUpperCase()} | ${catEmoji} **Category**: ${action.category} | 💥 **Impact**: ${action.estimatedImpact}\n\n`;
     output += `**Why now?** ${action.rationale}\n\n`;
     output += `**Description**: ${action.description}\n\n`;
-    output += `<details>\n<summary>📋 Click to expand the full prompt</summary>\n\n`;
+    output += `**Prompt**:\n\n`;
     output += `\`\`\`\n${action.prompt}\n\`\`\`\n\n`;
-    output += `</details>\n\n`;
     output += `**Tags**: ${action.tags.map((t) => `\`${t}\``).join(", ")}\n\n`;
     output += `---\n\n`;
   });

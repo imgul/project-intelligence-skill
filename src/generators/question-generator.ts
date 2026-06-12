@@ -4,11 +4,17 @@ import {
   WorkPhase,
 } from "../context/project-context.js";
 
+export interface QuestionGeneratorOptions {
+  topic?: string;
+  userInput?: string;
+}
+
 export class QuestionGenerator {
   generateQuestions(
     context: ProjectContext,
     mode: "planning" | "agent" | "asking",
-    count: number = 5
+    count: number = 5,
+    options: QuestionGeneratorOptions = {}
   ): StrategicQuestion[] {
     const allQuestions = [
       ...this.generateArchitectureQuestions(context),
@@ -24,10 +30,62 @@ export class QuestionGenerator {
     // Filter by mode
     const filtered = this.filterByMode(allQuestions, mode, context);
 
-    // Sort by importance and relevance
-    const sorted = this.sortByRelevance(filtered, context);
+    let sorted = this.sortByRelevance(filtered, context, options);
+
+    if (options.topic) {
+      sorted = this.applyTopicFilter(sorted, options.topic);
+    }
+
+    if (options.userInput) {
+      sorted = this.prependContextualQuestion(sorted, options.userInput, mode);
+    }
 
     return sorted.slice(0, count);
+  }
+
+  private applyTopicFilter(
+    questions: StrategicQuestion[],
+    topic: string
+  ): StrategicQuestion[] {
+    const topicLower = topic.toLowerCase();
+    const topicWords = topicLower.split(/\s+/).filter((w) => w.length > 2);
+
+    return [...questions].sort((a, b) => {
+      const scoreA = this.topicMatchScore(a, topicLower, topicWords);
+      const scoreB = this.topicMatchScore(b, topicLower, topicWords);
+      return scoreB - scoreA;
+    });
+  }
+
+  private topicMatchScore(
+    question: StrategicQuestion,
+    topicLower: string,
+    topicWords: string[]
+  ): number {
+    const haystack =
+      `${question.question} ${question.category} ${question.context}`.toLowerCase();
+    let score = 0;
+    if (haystack.includes(topicLower)) score += 50;
+    for (const word of topicWords) {
+      if (haystack.includes(word)) score += 10;
+    }
+    return score;
+  }
+
+  private prependContextualQuestion(
+    questions: StrategicQuestion[],
+    userInput: string,
+    mode: string
+  ): StrategicQuestion[] {
+    const contextual: StrategicQuestion = {
+      id: "contextual-follow-up",
+      category: mode === "asking" ? "business-logic" : "architecture",
+      question: `Given "${userInput}", what is the most important outcome or constraint we should optimize for?`,
+      context:
+        "Clarifies intent from the user's latest message before deeper questions",
+      importance: "high",
+    };
+    return [contextual, ...questions.filter((q) => q.id !== "contextual-follow-up")];
   }
 
   private filterByMode(
@@ -62,7 +120,8 @@ export class QuestionGenerator {
 
   private sortByRelevance(
     questions: StrategicQuestion[],
-    context: ProjectContext
+    context: ProjectContext,
+    options: QuestionGeneratorOptions = {}
   ): StrategicQuestion[] {
     const importanceScore = { critical: 100, high: 75, medium: 50, low: 25 };
     const phaseRelevance: Record<WorkPhase, string[]> = {
@@ -76,15 +135,26 @@ export class QuestionGenerator {
       unknown: [],
     };
 
+    const userInputLower = options.userInput?.toLowerCase() || "";
+
     return questions
-      .map((q) => ({
-        q,
-        score:
+      .map((q) => {
+        let score =
           importanceScore[q.importance] +
           (phaseRelevance[context.currentWorkContext.phase]?.includes(q.category)
             ? 20
-            : 0),
-      }))
+            : 0);
+
+        if (userInputLower) {
+          const text = `${q.question} ${q.context}`.toLowerCase();
+          const words = userInputLower.split(/\s+/).filter((w) => w.length > 3);
+          for (const word of words) {
+            if (text.includes(word)) score += 5;
+          }
+        }
+
+        return { q, score };
+      })
       .sort((a, b) => b.score - a.score)
       .map((item) => item.q);
   }

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ProjectAnalyzer } from "../analyzers/project-analyzer.js";
 import { ActionGenerator } from "../generators/action-generator.js";
 import { QuestionGenerator } from "../generators/question-generator.js";
+import { NextAction, ProjectContext } from "../context/project-context.js";
 
 export const planningAdvisorSchema = z.object({
   projectPath: z.string().describe("Path to the project root"),
@@ -17,6 +18,14 @@ export const planningAdvisorSchema = z.object({
 
 export type PlanningAdvisorInput = z.infer<typeof planningAdvisorSchema>;
 
+const TIMEFRAME_DAYS: Record<string, number> = {
+  today: 1,
+  "this-week": 5,
+  "this-sprint": 10,
+  "this-month": 20,
+  "this-quarter": 60,
+};
+
 export async function generatePlan(input: PlanningAdvisorInput): Promise<string> {
   const analyzer = new ProjectAnalyzer();
   const actionGenerator = new ActionGenerator();
@@ -24,7 +33,10 @@ export async function generatePlan(input: PlanningAdvisorInput): Promise<string>
 
   const context = await analyzer.analyze(input.projectPath);
   const actions = actionGenerator.generateActions(context, 5);
-  const questions = questionGenerator.generateQuestions(context, "planning", 3);
+  const questions = questionGenerator.generateQuestions(context, "planning", 3, {
+    topic: input.goal,
+    userInput: input.constraints,
+  });
 
   let output = `# 🗺️ Project Intelligence: Planning Advisor\n\n`;
   output += `**Goal**: ${input.goal}\n`;
@@ -37,7 +49,6 @@ export async function generatePlan(input: PlanningAdvisorInput): Promise<string>
 
   output += `\n---\n\n`;
 
-  // Pre-planning questions
   output += `## ❓ Before You Start: Answer These First\n\n`;
   questions.forEach((q, i) => {
     output += `${i + 1}. **${q.question}**\n`;
@@ -46,11 +57,9 @@ export async function generatePlan(input: PlanningAdvisorInput): Promise<string>
 
   output += `---\n\n`;
 
-  // Recommended plan
   output += `## 📋 Recommended Implementation Plan\n\n`;
   output += `Based on your project's current state, here's a strategic plan for "${input.goal}":\n\n`;
 
-  // Phase breakdown
   const phases = generatePhases(input.goal, input.timeframe, context, actions);
   phases.forEach((phase, index) => {
     output += `### Phase ${index + 1}: ${phase.name}\n\n`;
@@ -63,9 +72,8 @@ export async function generatePlan(input: PlanningAdvisorInput): Promise<string>
 
   output += `---\n\n`;
 
-  // Risks and mitigations
   output += `## ⚠️ Risks & Mitigations\n\n`;
-  const risks = identifyRisks(context, input.goal);
+  const risks = identifyRisks(context, input.goal, input.constraints);
   risks.forEach((risk) => {
     output += `**Risk**: ${risk.risk}\n`;
     output += `**Mitigation**: ${risk.mitigation}\n\n`;
@@ -73,7 +81,6 @@ export async function generatePlan(input: PlanningAdvisorInput): Promise<string>
 
   output += `---\n\n`;
 
-  // Related next actions
   output += `## 🎯 Critical Actions That Should Accompany This Work\n\n`;
   const criticalActions = actions
     .filter((a) => a.priority === "critical" || a.priority === "high")
@@ -88,117 +95,171 @@ export async function generatePlan(input: PlanningAdvisorInput): Promise<string>
 
 function generatePhases(
   goal: string,
-  _timeframe: string,
-  _context: any,
-  _actions: any[]
+  timeframe: string,
+  context: ProjectContext,
+  actions: NextAction[]
 ): Array<{ name: string; timeline: string; tasks: string[] }> {
   const goalLower = goal.toLowerCase();
+  const totalDays = TIMEFRAME_DAYS[timeframe] || 10;
+  const highPriorityTasks = actions
+    .filter((a) => a.priority === "critical" || a.priority === "high")
+    .slice(0, 3)
+    .map((a) => a.title);
+
+  const contextTasks: string[] = [];
+  if (!context.hasTests) contextTasks.push("Add test coverage for affected areas");
+  if (!context.hasCI) contextTasks.push("Ensure CI runs on the feature branch");
+  if (context.exposedSecrets.length > 0) {
+    contextTasks.push("Rotate exposed secrets before shipping");
+  }
+  if (context.vulnerableDependencies?.length) {
+    contextTasks.push("Address known vulnerable dependencies");
+  }
 
   if (goalLower.includes("auth")) {
-    return [
+    return buildPhasedPlan(totalDays, [
       {
         name: "Foundation",
-        timeline: "Day 1-2",
         tasks: [
-          "Set up auth library (Auth.js/Passport)",
+          "Set up auth library",
           "Design user schema",
           "Create auth routes",
-          "Implement session management",
+          ...contextTasks,
         ],
       },
       {
         name: "Core Features",
-        timeline: "Day 3-4",
         tasks: [
-          "Login/Register forms",
-          "Email verification",
-          "Password reset flow",
+          "Login/Register flows",
+          "Session management",
           "Protected routes",
+          ...highPriorityTasks,
         ],
       },
       {
         name: "Security Hardening",
-        timeline: "Day 5",
         tasks: ["Rate limiting", "CSRF protection", "Security headers", "Auth tests"],
       },
-    ];
+    ]);
   }
 
   if (goalLower.includes("deploy") || goalLower.includes("ci")) {
-    return [
+    return buildPhasedPlan(totalDays, [
       {
         name: "CI Pipeline",
-        timeline: "Day 1",
         tasks: [
           "GitHub Actions setup",
-          "Lint and type check jobs",
+          "Lint and type check",
           "Test job",
-          "Build verification",
+          ...contextTasks,
         ],
       },
       {
         name: "Deployment",
-        timeline: "Day 2",
         tasks: [
           "Choose deployment platform",
-          "Set up environments",
-          "Configure secrets management",
-          "Deploy staging",
+          "Configure environments",
+          "Secrets management",
+          ...highPriorityTasks,
         ],
       },
       {
         name: "Production",
-        timeline: "Day 3",
         tasks: [
           "Deploy to production",
-          "Set up monitoring",
-          "Configure alerts",
-          "Document deployment process",
+          "Monitoring",
+          "Alerts",
+          "Runbook documentation",
         ],
       },
-    ];
+    ]);
   }
 
-  // Generic phases
-  return [
+  if (goalLower.includes("test")) {
+    return buildPhasedPlan(totalDays, [
+      {
+        name: "Test Infrastructure",
+        tasks: ["Choose test framework", "Configure test runner", ...contextTasks],
+      },
+      {
+        name: "Critical Path Coverage",
+        tasks: ["Identify critical modules", "Write unit tests", ...highPriorityTasks],
+      },
+      {
+        name: "CI Integration",
+        tasks: [
+          "Add test job to CI",
+          "Set coverage thresholds",
+          "Document testing conventions",
+        ],
+      },
+    ]);
+  }
+
+  const phaseCount = totalDays <= 1 ? 2 : totalDays <= 5 ? 3 : 4;
+  const genericPhases = [
     {
       name: "Planning & Setup",
-      timeline: "Day 1",
       tasks: [
-        "Define requirements clearly",
-        "Design the data model",
-        "Identify dependencies",
-        "Set up feature branch",
+        `Define done criteria for: ${goal}`,
+        "Design data model / API contracts",
+        "Identify dependencies and risks",
+        ...contextTasks,
       ],
     },
     {
       name: "Core Implementation",
-      timeline: "Days 2-3",
       tasks: [
         "Implement backend logic",
-        "Create API endpoints",
-        "Build UI components",
-        "Connect frontend to backend",
+        "Build UI / integration layer",
+        ...highPriorityTasks,
       ],
     },
     {
       name: "Quality & Polish",
-      timeline: "Days 4-5",
       tasks: [
         "Write tests",
         "Handle error cases",
         "Code review",
-        "Documentation update",
+        "Update documentation",
       ],
     },
   ];
+
+  if (phaseCount >= 4) {
+    genericPhases.splice(2, 0, {
+      name: "Integration",
+      tasks: [
+        "Connect components end-to-end",
+        "Validate against requirements",
+        "Address feedback from review",
+      ],
+    });
+  }
+
+  return buildPhasedPlan(totalDays, genericPhases);
+}
+
+function buildPhasedPlan(
+  totalDays: number,
+  phases: Array<{ name: string; tasks: string[] }>
+): Array<{ name: string; timeline: string; tasks: string[] }> {
+  const daysPerPhase = Math.max(1, Math.floor(totalDays / phases.length));
+  return phases.map((phase, index) => {
+    const start = index * daysPerPhase + 1;
+    const end = index === phases.length - 1 ? totalDays : (index + 1) * daysPerPhase;
+    const timeline = start === end ? `Day ${start}` : `Days ${start}-${end}`;
+    return { name: phase.name, timeline, tasks: phase.tasks };
+  });
 }
 
 function identifyRisks(
-  context: any,
-  _goal: string
+  context: ProjectContext,
+  goal: string,
+  constraints?: string
 ): Array<{ risk: string; mitigation: string }> {
-  const risks = [];
+  const risks: Array<{ risk: string; mitigation: string }> = [];
+  const goalLower = goal.toLowerCase();
 
   if (!context.hasTests) {
     risks.push({
@@ -221,10 +282,35 @@ function identifyRisks(
     });
   }
 
+  if (context.vulnerableDependencies?.length) {
+    risks.push({
+      risk: `Known vulnerable dependencies: ${context.vulnerableDependencies.join(", ")}`,
+      mitigation: "Upgrade or replace vulnerable packages before proceeding",
+    });
+  }
+
   if (!context.hasCI) {
     risks.push({
       risk: "Without CI, quality issues might slip through to production",
       mitigation: "Set up basic CI checks before the feature is complete",
+    });
+  }
+
+  if (goalLower.includes("auth") && !context.hasAuthentication) {
+    risks.push({
+      risk: "Adding authentication touches security-sensitive flows",
+      mitigation: "Threat-model auth flows and add security review before launch",
+    });
+  }
+
+  if (
+    constraints?.toLowerCase().includes("solo") ||
+    constraints?.toLowerCase().includes("one person")
+  ) {
+    risks.push({
+      risk: "Solo delivery increases bus factor and review gaps",
+      mitigation:
+        "Keep scope minimal and use automated checks to compensate for missing reviewers",
     });
   }
 
@@ -233,5 +319,5 @@ function identifyRisks(
     mitigation: 'Define a clear "done" criteria and stick to it. Log ideas for later.',
   });
 
-  return risks.slice(0, 4);
+  return risks.slice(0, 5);
 }

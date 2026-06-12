@@ -28,16 +28,26 @@ export async function generateStrategicQuestions(
   const generator = new QuestionGenerator();
 
   const context = await analyzer.analyze(input.projectPath);
-  const questions = generator.generateQuestions(context, input.mode, input.count);
+  const questions = generator.generateQuestions(context, input.mode, input.count, {
+    topic: input.topic,
+    userInput: input.userInput,
+  });
 
-  return formatQuestionsOutput(questions, context, input.mode, input.userInput);
+  return formatQuestionsOutput(
+    questions,
+    context,
+    input.mode,
+    input.userInput,
+    input.topic
+  );
 }
 
 function formatQuestionsOutput(
   questions: StrategicQuestion[],
   context: any,
   mode: string,
-  userInput?: string
+  userInput?: string,
+  topic?: string
 ): string {
   const modeDescriptions: Record<string, string> = {
     planning: "Strategic Planning Questions",
@@ -67,6 +77,10 @@ function formatQuestionsOutput(
 
   let output = `# 🤔 Strategic Questions: ${modeDescriptions[mode] || mode}\n\n`;
   output += `**Project**: ${context.projectName} | **Phase**: ${context.currentWorkContext.phase}\n\n`;
+
+  if (topic) {
+    output += `> 🎯 **Topic**: ${topic}\n\n`;
+  }
 
   if (userInput) {
     output += `> 🗣️ **Context**: Based on: "${userInput}"\n\n`;

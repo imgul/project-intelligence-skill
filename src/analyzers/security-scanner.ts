@@ -28,6 +28,28 @@ Please help me:
       });
     }
 
+    if (context.vulnerableDependencies && context.vulnerableDependencies.length > 0) {
+      actions.push({
+        id: "security-vulnerable-deps",
+        category: "security",
+        priority: "high",
+        title: "⚠️ Upgrade Vulnerable Dependencies",
+        description: `Known vulnerable packages detected: ${context.vulnerableDependencies.join(", ")}`,
+        prompt: `My project has potentially vulnerable dependencies:
+${context.vulnerableDependencies.join("\n")}
+
+Please help me:
+1. Identify safe upgrade paths for each package
+2. Check for breaking changes in major version bumps
+3. Update package.json / requirements and lockfiles
+4. Run tests to verify compatibility
+5. Document any packages that need manual migration`,
+        rationale: "Vulnerable dependencies increase supply-chain attack risk",
+        estimatedImpact: "high",
+        tags: ["security", "dependencies", "supply-chain"],
+      });
+    }
+
     // Missing .env.example
     if (context.hasEnvFile && !context.hasEnvExample) {
       actions.push({
